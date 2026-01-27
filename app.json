@@ -1,0 +1,36 @@
+{
+  "expo": {
+    "name": "OpenCode",
+    "slug": "opencode-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "opencode",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ai.opencode.mobile",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Use Face ID to unlock OpenCode and access your sessions securely.",
+        "NSSpeechRecognitionUsageDescription": "Speech recognition is used to convert your voice into text messages.",
+        "NSMicrophoneUsageDescription": "The microphone is used for voice-to-text input."
+      }
+    },
+    "android": {
+      "package": "ai.opencode.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "static"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-local-authentication",
+      "expo-speech-recognition"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
