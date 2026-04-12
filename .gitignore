@@ -21,7 +21,7 @@ node_modules/
 ios/
 
 # Android
-android/
+# android/ (REMOVED - now tracking native code)
 
 # Environment
 .env

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "OpenCode",
-    "slug": "opencode-mobile",
+    "slug": "opencode-rn",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "opencode",
@@ -16,7 +16,12 @@
       }
     },
     "android": {
-      "package": "ai.opencode.mobile"
+      "package": "ai.opencode.mobile",
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "web": {
       "bundler": "metro",
@@ -31,6 +36,13 @@
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "f71c0925-4b56-4572-88a3-de0bc07b34a2"
+      }
+    },
+    "owner": "timothynjagi"
   }
 }
