@@ -460,7 +460,7 @@ export default function SessionScreen() {
 
       <KeyboardAvoidingView
         style={[s.container, isDark && s.containerDark]}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         {/* Session info pulldown */}
@@ -493,11 +493,12 @@ export default function SessionScreen() {
               inverted
               keyExtractor={(item) => item.message.id}
               renderItem={({ item }) => <MessageBubble message={item.message} parts={item.parts} isDark={isDark} />}
-              contentContainerStyle={s.messageList}
+              contentContainerStyle={[s.messageList, { paddingBottom: Math.max(8, insets.bottom) }]}
               onScroll={handleScroll}
               scrollEventThrottle={100}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}
+              keyboardShouldPersistTaps="handled"
               // Prevent jump when older messages are prepended
               maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
               ListFooterComponent={
