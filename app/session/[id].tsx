@@ -101,6 +101,7 @@ export default function SessionScreen() {
     sendMessage,
     abortSession,
     loadOlderMessages,
+    revertToMessage,
   } = useSessions()
 
   // Derive sending state for this specific session
@@ -428,6 +429,23 @@ export default function SessionScreen() {
     [setModel],
   )
 
+  const handleMessageLongPress = useCallback(
+    (messageID: string) => {
+      Alert.alert("Revert to this message", "Choose revert mode:", [
+        {
+          text: "Conversation Only",
+          onPress: () => revertToMessage(messageID, "conversation"),
+        },
+        {
+          text: "Conversation & Code",
+          onPress: () => revertToMessage(messageID, "conversation_and_code"),
+        },
+        { text: "Cancel", style: "cancel" },
+      ])
+    },
+    [revertToMessage],
+  )
+
   // Current agent display
   const currentAgent = agents.find((a) => a.name === agent)
   const agentColor = currentAgent?.color || "#8b5cf6"
@@ -492,7 +510,9 @@ export default function SessionScreen() {
               data={messageData}
               inverted
               keyExtractor={(item) => item.message.id}
-              renderItem={({ item }) => <MessageBubble message={item.message} parts={item.parts} isDark={isDark} />}
+              renderItem={({ item }) => (
+                <MessageBubble message={item.message} parts={item.parts} isDark={isDark} onLongPress={handleMessageLongPress} />
+              )}
               contentContainerStyle={[s.messageList, { paddingBottom: Math.max(8, insets.bottom) }]}
               onScroll={handleScroll}
               scrollEventThrottle={100}

@@ -46,6 +46,8 @@ interface SessionsState {
   ) => Promise<void>
   abortSession: () => Promise<void>
   refreshMessages: () => Promise<void>
+  revertToMessage: (messageID: string, mode?: "conversation" | "conversation_and_code") => Promise<void>
+  unrevertSession: () => Promise<void>
 
   // Event handling
   handleEvent: (event: Event) => void
@@ -369,6 +371,36 @@ export const useSessions = create<SessionsState>((set, get) => ({
         }))
         break
       }
+    }
+  },
+
+  revertToMessage: async (messageID, mode = "conversation") => {
+    const { currentSession } = get()
+    if (!currentSession) return
+
+    const client = clientFor(currentSession.directory)
+    if (!client) return
+
+    try {
+      await client.session.revert(currentSession.id, { messageID, mode })
+    } catch (error) {
+      console.error("Revert failed:", error)
+      throw error
+    }
+  },
+
+  unrevertSession: async () => {
+    const { currentSession } = get()
+    if (!currentSession) return
+
+    const client = clientFor(currentSession.directory)
+    if (!client) return
+
+    try {
+      await client.session.unrevert(currentSession.id)
+    } catch (error) {
+      console.error("Unrevert failed:", error)
+      throw error
     }
   },
 }))

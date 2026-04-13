@@ -337,6 +337,18 @@ export function createClient(config: ClientConfig) {
         const qs = messageID ? `?messageID=${messageID}` : ""
         return request<unknown[]>(config, `/session/${sessionID}/diff${qs}`)
       },
+
+      revert: (
+        sessionID: string,
+        params: { messageID: string; partID?: string; mode?: "conversation" | "conversation_and_code" },
+      ) =>
+        request<Session>(config, `/session/${sessionID}/revert`, {
+          method: "POST",
+          body: JSON.stringify(params),
+        }),
+
+      unrevert: (sessionID: string) =>
+        request<Session>(config, `/session/${sessionID}/unrevert`, { method: "POST" }),
     },
 
     permission: {

@@ -16,12 +16,13 @@ interface Props {
   message: Message
   parts: Part[]
   isDark: boolean
+  onLongPress?: (messageID: string) => void
 }
 
 // TODO: Replace with streamdown-rn once React 19 types PR lands - it has
 // built-in block-level memoization that eliminates re-renders for stable blocks
 export const MessageBubble = memo(
-  function MessageBubble({ message, parts, isDark }: Props) {
+  function MessageBubble({ message, parts, isDark, onLongPress }: Props) {
     const isUser = message.role === "user"
 
     const textParts = parts.filter((p) => p.type === "text")
@@ -31,8 +32,17 @@ export const MessageBubble = memo(
     const text = textParts.map((p) => p.text).join("\n") || ""
     const reasoning = reasoningParts.map((p) => p.text).join("\n") || ""
 
+    const handleLongPress = () => {
+      if (message.role === "assistant" && onLongPress) {
+        onLongPress(message.id)
+      }
+    }
+
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.7}
+        onLongPress={handleLongPress}
+        delayLongPress={500}
         style={[
           s.bubble,
           isUser ? s.user : s.assistant,
@@ -100,7 +110,7 @@ export const MessageBubble = memo(
             {message.cost ? ` · $${message.cost.toFixed(4)}` : ""}
           </Text>
         )}
-      </View>
+      </TouchableOpacity>
     )
   },
   (prev, next) => {
