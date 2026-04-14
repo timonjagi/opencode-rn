@@ -513,12 +513,11 @@ export default function SessionScreen() {
               renderItem={({ item }) => (
                 <MessageBubble message={item.message} parts={item.parts} isDark={isDark} onLongPress={handleMessageLongPress} />
               )}
-              contentContainerStyle={[s.messageList, { paddingBottom: Math.max(8, insets.bottom) }]}
+              contentContainerStyle={s.messageList}
               onScroll={handleScroll}
               scrollEventThrottle={100}
               onEndReached={handleLoadMore}
               onEndReachedThreshold={0.5}
-              keyboardShouldPersistTaps="handled"
               // Prevent jump when older messages are prepended
               maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
               ListFooterComponent={
@@ -602,7 +601,7 @@ export default function SessionScreen() {
 
         {/* Input */}
         <View
-          style={[s.inputContainer, isDark && s.inputContainerDark, { paddingBottom: Math.max(12, insets.bottom) }]}
+          style={[s.inputContainer, isDark && s.inputContainerDark]}
         >
           <View style={s.inputRow}>
             {/* Attach button */}
