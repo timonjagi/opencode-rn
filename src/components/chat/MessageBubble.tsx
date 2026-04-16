@@ -33,7 +33,7 @@ export const MessageBubble = memo(
     const reasoning = reasoningParts.map((p) => p.text).join("\n") || ""
 
     const handleLongPress = () => {
-      if (message.role === "assistant" && onLongPress) {
+      if (onLongPress) {
         onLongPress(message.id)
       }
     }

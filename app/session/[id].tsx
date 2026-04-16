@@ -430,20 +430,31 @@ export default function SessionScreen() {
   )
 
   const handleMessageLongPress = useCallback(
-    (messageID: string) => {
-      Alert.alert("Revert to this message", "Choose revert mode:", [
-        {
-          text: "Conversation Only",
-          onPress: () => revertToMessage(messageID, "conversation"),
-        },
-        {
-          text: "Conversation & Code",
-          onPress: () => revertToMessage(messageID, "conversation_and_code"),
-        },
-        { text: "Cancel", style: "cancel" },
-      ])
+    (messageID: string, messageRole: string) => {
+      if (messageRole === "user") {
+        // Revert option for user messages
+        Alert.alert("Revert to this message", "Choose revert mode:", [
+          {
+            text: "Conversation Only",
+            onPress: () => revertToMessage(messageID, "conversation"),
+          },
+          {
+            text: "Conversation & Code",
+            onPress: () => revertToMessage(messageID, "conversation_and_code"),
+          },
+          { text: "Cancel", style: "cancel" },
+        ])
+      } else {
+        // Copy option for assistant messages
+        const msg = messages?.find((m) => m.id === messageID)
+        const text = msg?.id ? (parts[messageID]?.filter((p) => p.type === "text").map((p) => p.text).join("\n") || "") : "")
+        if (text) {
+          Clipboard.setString(text)
+          Alert.alert("Copied", "Message copied to clipboard")
+        }
+      }
     },
-    [revertToMessage],
+    [revertToMessage, messages, parts],
   )
 
   // Current agent display
@@ -478,8 +489,8 @@ export default function SessionScreen() {
 
       <KeyboardAvoidingView
         style={[s.container, isDark && s.containerDark]}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
+        behavior="padding"
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 56}
       >
         {/* Session info pulldown */}
         <SessionInfo
@@ -511,7 +522,7 @@ export default function SessionScreen() {
               inverted
               keyExtractor={(item) => item.message.id}
               renderItem={({ item }) => (
-                <MessageBubble message={item.message} parts={item.parts} isDark={isDark} onLongPress={handleMessageLongPress} />
+                <MessageBubble message={item.message} parts={item.parts} isDark={isDark} onLongPress={(id) => handleMessageLongPress(id, item.message.role)} />
               )}
               contentContainerStyle={s.messageList}
               onScroll={handleScroll}
@@ -601,7 +612,7 @@ export default function SessionScreen() {
 
         {/* Input */}
         <View
-          style={[s.inputContainer, isDark && s.inputContainerDark]}
+          style={[s.inputContainer, isDark && s.inputContainerDark, { paddingBottom: Math.max(12, insets.bottom) }]}
         >
           <View style={s.inputRow}>
             {/* Attach button */}
