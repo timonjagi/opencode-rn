@@ -447,7 +447,7 @@ export default function SessionScreen() {
       } else {
         // Copy option for assistant messages
         const msg = messages?.find((m) => m.id === messageID)
-        const text = msg?.id ? (parts[messageID]?.filter((p) => p.type === "text").map((p) => p.text).join("\n") || "") : "")
+        const text = msg?.id ? (parts[messageID]?.filter((p) => p.type === "text").map((p) => p.text).join("\n") || "") : ""
         if (text) {
           Clipboard.setString(text)
           Alert.alert("Copied", "Message copied to clipboard")
