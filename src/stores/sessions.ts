@@ -383,6 +383,8 @@ export const useSessions = create<SessionsState>((set, get) => ({
 
     try {
       await client.session.revert(currentSession.id, { messageID, mode })
+      const { refreshMessages } = get()
+      await refreshMessages()
     } catch (error) {
       console.error("Revert failed:", error)
       throw error
@@ -398,6 +400,8 @@ export const useSessions = create<SessionsState>((set, get) => ({
 
     try {
       await client.session.unrevert(currentSession.id)
+      const { refreshMessages } = get()
+      await refreshMessages()
     } catch (error) {
       console.error("Unrevert failed:", error)
       throw error

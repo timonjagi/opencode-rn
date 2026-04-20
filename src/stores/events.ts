@@ -176,6 +176,30 @@ export const useEvents = create<EventsState>((set, get) => ({
               break
             }
 
+            case "message.removed": {
+              const messageID = props.messageID as string
+              if (!messageID) break
+              useSessions.getState().handleEvent({ type, properties: { messageID } } as any)
+              break
+            }
+
+            case "message.part.removed": {
+              const partID = props.partID as string
+              const messageID = props.messageID as string
+              if (!partID || !messageID) break
+              useSessions.setState((state) => {
+                const msgParts = state.parts[messageID]
+                if (!msgParts) return {}
+                return {
+                  parts: {
+                    ...state.parts,
+                    [messageID]: msgParts.filter((p) => p.id !== partID),
+                  },
+                }
+              })
+              break
+            }
+
             case "session.updated": {
               const info = props.info as Session | undefined
               if (!info) break
@@ -186,6 +210,7 @@ export const useEvents = create<EventsState>((set, get) => ({
             case "session.created": {
               const info = props.info as Session | undefined
               if (!info) break
+              if (info.parentID) break
               // Add to sessions list
               useSessions.setState((state) => {
                 const exists = state.sessions.some((s) => s.id === info.id)

@@ -22,6 +22,12 @@ export interface Session {
   title: string
   version: string
   share?: { url: string }
+  revert?: {
+    messageID: string
+    partID?: string
+    snapshot?: string
+    diff?: string
+  }
   time: {
     created: number
     updated: number

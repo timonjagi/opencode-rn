@@ -102,6 +102,7 @@ export default function SessionScreen() {
     abortSession,
     loadOlderMessages,
     revertToMessage,
+    unrevertSession,
   } = useSessions()
 
   // Derive sending state for this specific session
@@ -151,15 +152,22 @@ export default function SessionScreen() {
   }, [serverCommands])
 
   // Inverted FlatList: data is reversed (newest first) so newest renders at bottom
+  const revertMessageID = currentSession?.revert?.messageID
   const messageData = useMemo(
     () =>
       (messages || [])
+        .filter((msg) => {
+          if (!revertMessageID) return true
+          const revertIndex = messages.findIndex((m) => m.id === revertMessageID)
+          if (revertIndex === -1) return true
+          return messages.indexOf(msg) <= revertIndex
+        })
         .map((msg) => ({
           message: msg,
           parts: (parts && parts[msg.id]) || [],
         }))
         .reverse(),
-    [messages, parts],
+    [messages, parts, revertMessageID],
   )
 
   const scrollToBottom = useCallback((animated = true) => {
@@ -510,6 +518,17 @@ export default function SessionScreen() {
           onClose={() => setShowInfo(false)}
         />
 
+        {/* Revert banner */}
+        {currentSession?.revert && (
+          <View style={[s.revertBanner, isDark && s.revertBannerDark]}>
+            <Ionicons name="arrow-undo" size={16} color={isDark ? "#fbbf24" : "#d97706"} />
+            <Text style={[s.revertText, isDark && s.revertTextDark]}>Reverted to previous message</Text>
+            <TouchableOpacity onPress={() => unrevertSession()} style={s.revertUndoBtn}>
+              <Text style={s.revertUndoText}>Undo</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         {isLoading ? (
           <View style={s.loading}>
             <ActivityIndicator size="large" color={isDark ? "#ffffff" : "#0a0a0a"} />
@@ -763,6 +782,23 @@ const s = StyleSheet.create({
   },
   modelChipDark: { backgroundColor: "#1a1a1a" },
   modelLabel: { fontSize: 12, color: "#666666", maxWidth: 160 },
+
+  // Revert banner
+  revertBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: "#fef3c7",
+    borderTopWidth: 1,
+    borderTopColor: "#fde68a",
+  },
+  revertBannerDark: { backgroundColor: "#422006", borderTopColor: "#78350f" },
+  revertText: { flex: 1, fontSize: 13, color: "#92400e" },
+  revertTextDark: { color: "#fbbf24" },
+  revertUndoBtn: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 6, backgroundColor: "#d97706" },
+  revertUndoText: { fontSize: 13, fontWeight: "600", color: "#ffffff" },
 
   // Input
   inputContainer: {
