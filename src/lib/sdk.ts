@@ -359,7 +359,7 @@ export function createClient(config: ClientConfig) {
 
     permission: {
       list: () =>
-        request<Array<{ id: string; sessionID: string; tool: string; input: unknown }>>(config, "/permission"),
+        request<Array<{ id: string; sessionID: string; permission?: string; patterns?: unknown; tool?: unknown; input?: unknown; name?: string; metadata?: unknown }>>(config, "/permission"),
 
       reply: (requestID: string, reply: "once" | "always" | "reject") =>
         request<boolean>(config, `/permission/${requestID}/reply`, {
@@ -369,7 +369,7 @@ export function createClient(config: ClientConfig) {
     },
 
     question: {
-      list: () => request<Array<{ id: string; sessionID: string; questions: unknown[] }>>(config, "/question"),
+      list: () => request<Array<{ id: string; sessionID: string; questions: unknown[]; tool?: unknown }>>(config, "/question"),
 
       reply: (requestID: string, answers: string[][]) =>
         request<boolean>(config, `/question/${requestID}/reply`, {

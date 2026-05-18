@@ -25,14 +25,42 @@ interface Props {
   onReject: () => void
 }
 
+function safeQuestions(questions: unknown[]): Array<{
+  question: string
+  header: string
+  options: Array<{ label: string; description: string }>
+  multiple: boolean
+  custom: boolean
+}> {
+  if (!Array.isArray(questions)) return []
+  return questions
+    .filter((q): q is Record<string, unknown> => q != null && typeof q === "object")
+    .map((q) => {
+      const raw = Array.isArray(q.options) ? q.options : []
+      const options = raw
+        .map((opt: unknown) =>
+          typeof opt === "string" ? { label: opt, description: "" } : typeof opt === "object" && opt !== null ? { label: String((opt as Record<string, unknown>).label ?? ""), description: String((opt as Record<string, unknown>).description ?? "") } : null,
+        )
+        .filter((o): o is { label: string; description: string } => o !== null)
+      return {
+        question: String(q.question ?? ""),
+        header: String(q.header ?? ""),
+        options,
+        multiple: Boolean(q.multiple),
+        custom: q.custom !== false,
+      }
+    })
+}
+
 export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
-  const [answers, setAnswers] = useState<string[][]>(request.questions.map(() => []))
+  const questions = safeQuestions(request.questions)
+  const [answers, setAnswers] = useState<string[][]>(() => questions.map(() => []))
   const [custom, setCustom] = useState("")
   const [showCustom, setShowCustom] = useState(false)
   const [current, setCurrent] = useState(0)
 
-  const q = request.questions[current]
-  if (!q) return null
+  const q = questions[current]
+  if (!q || questions.length === 0) return null
 
   const toggleOption = (label: string) => {
     setAnswers((prev) => {
@@ -42,7 +70,7 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
         copy[current] = selected.includes(label) ? selected.filter((a) => a !== label) : [...selected, label]
       } else {
         copy[current] = [label]
-        if (request.questions.length === 1) {
+        if (questions.length === 1) {
           setTimeout(() => onReply(copy), 100)
         }
       }
@@ -57,7 +85,7 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
     setAnswers(copy)
     setCustom("")
     setShowCustom(false)
-    if (request.questions.length === 1) {
+    if (questions.length === 1) {
       onReply(copy)
     }
   }
@@ -117,18 +145,18 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
         <TouchableOpacity onPress={onReject}>
           <Text style={[s.dismiss, isDark && s.metaDark]}>Dismiss</Text>
         </TouchableOpacity>
-        {(request.questions.length > 1 || q.multiple) && (
+        {(questions.length > 1 || q.multiple) && (
           <TouchableOpacity
             style={[s.submitBtn, isDark && s.submitBtnDark]}
             onPress={() => {
-              if (current < request.questions.length - 1) {
+              if (current < questions.length - 1) {
                 setCurrent(current + 1)
               } else {
                 onReply(answers)
               }
             }}
           >
-            <Text style={s.submitText}>{current < request.questions.length - 1 ? "Next" : "Submit"}</Text>
+            <Text style={s.submitText}>{current < questions.length - 1 ? "Next" : "Submit"}</Text>
           </TouchableOpacity>
         )}
       </View>

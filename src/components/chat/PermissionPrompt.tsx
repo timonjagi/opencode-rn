@@ -2,12 +2,15 @@ import { View, Text, TouchableOpacity, StyleSheet } from "react-native"
 import { Ionicons } from "@expo/vector-icons"
 
 interface Props {
-  permission: { id: string; permission: string; patterns: string[] }
+  permission: { id: string; permission: string; patterns: string[]; metadata?: Record<string, unknown>; tool?: { messageID: string; callID: string }; name?: string }
   isDark: boolean
   onReply: (reply: "once" | "always" | "reject") => void
 }
 
 export function PermissionPrompt({ permission, isDark, onReply }: Props) {
+  const label = permission.permission || permission.name || "Unknown"
+  const patterns = Array.isArray(permission.patterns) ? permission.patterns : []
+
   return (
     <View style={[s.card, isDark && s.cardDark]}>
       <View style={s.header}>
@@ -15,7 +18,7 @@ export function PermissionPrompt({ permission, isDark, onReply }: Props) {
         <Text style={[s.title, isDark && s.textWhite]}>Permission Required</Text>
       </View>
       <Text style={[s.type, isDark && s.typeDark]}>
-        {permission.permission}: {permission.patterns.join(", ")}
+        {label}: {patterns.join(", ")}
       </Text>
       <View style={s.actions}>
         <TouchableOpacity style={[s.btn, s.deny]} onPress={() => onReply("reject")}>

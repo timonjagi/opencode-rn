@@ -68,17 +68,73 @@ interface EventsState {
 
 let controller: AbortController | null = null
 
-// Re-fetch pending permissions and questions from the server for a session.
-// Called when entering a session to recover from missed SSE events or failed
-// optimistic removals.
+function parseJSON<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[]
+  if (typeof value === "string") {
+    try {
+      return JSON.parse(value) as T[]
+    } catch {
+      return []
+    }
+  }
+  return []
+}
+
+function normalizePermission(perm: Record<string, unknown>) {
+  const patterns = parseJSON<string>(perm.patterns)
+  const inputPatterns = parseJSON<string>(perm.input)
+  return {
+    id: String(perm.id),
+    sessionID: String(perm.sessionID),
+    permission: String(perm.permission || perm.tool || perm.name || ""),
+    patterns: patterns.length > 0 ? patterns : inputPatterns,
+    metadata: (perm.metadata && typeof perm.metadata === "object" ? perm.metadata : {}) as Record<string, unknown>,
+    tool:
+      perm.tool && typeof perm.tool === "object"
+        ? (perm.tool as { messageID: string; callID: string })
+        : undefined,
+    name: perm.name ? String(perm.name) : undefined,
+  }
+}
+
+function normalizeQuestion(q: Record<string, unknown>) {
+  const questions = parseJSON<Record<string, unknown>>(q.questions)
+  const normalizedQuestions = questions.map((item) => {
+    const options = parseJSON<{ label: string; description: string }>(item.options)
+    return {
+      question: String(item.question || ""),
+      header: String(item.header || ""),
+      options: options.map((opt) =>
+        typeof opt === "string" ? { label: opt, description: "" } : { label: String(opt.label || ""), description: String(opt.description || "") },
+      ),
+      multiple: Boolean(item.multiple),
+      custom: item.custom !== false,
+    }
+  })
+  return {
+    id: String(q.id),
+    sessionID: String(q.sessionID),
+    questions: normalizedQuestions,
+    tool:
+      q.tool && typeof q.tool === "object"
+        ? (q.tool as { messageID: string; callID: string })
+        : undefined,
+  }
+}
+
 export async function refreshPending(client: Client, sessionID: string) {
   try {
     const [perms, questions] = await Promise.all([client.permission.list(), client.question.list()])
-    const sessionPerms = (perms || []).filter((p: Record<string, unknown>) => p.sessionID === sessionID)
-    const sessionQuestions = (questions || []).filter((q: Record<string, unknown>) => q.sessionID === sessionID)
+    const sessionPerms = (perms || [])
+      .filter((p: Record<string, unknown>) => String(p.sessionID) === sessionID)
+      .map(normalizePermission)
+    const sessionQuestions = (questions || [])
+      .filter((q: Record<string, unknown>) => String(q.sessionID) === sessionID)
+      .map(normalizeQuestion)
+
     useEvents.setState((state) => ({
-      permissions: { ...state.permissions, [sessionID]: sessionPerms as any },
-      questions: { ...state.questions, [sessionID]: sessionQuestions as any },
+      permissions: { ...state.permissions, [sessionID]: sessionPerms },
+      questions: { ...state.questions, [sessionID]: sessionQuestions },
     }))
   } catch (err) {
     console.warn("[Events] Failed to refresh pending:", err)
