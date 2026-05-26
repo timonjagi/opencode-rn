@@ -33,7 +33,6 @@ function safeQuestions(requestId: string, questions: unknown[]): Array<{
   custom: boolean
 }> {
   if (!Array.isArray(questions)) {
-    console.log(`[QuestionPrompt] ${requestId}: questions is not an array:`, typeof questions, String(questions)?.slice(0, 200))
     return []
   }
   const result = questions
@@ -53,7 +52,6 @@ function safeQuestions(requestId: string, questions: unknown[]): Array<{
         custom: q.custom !== false,
       }
     })
-  console.log(`[QuestionPrompt] ${requestId}: processed ${result.length} questions from ${questions.length} raw items`)
   return result
 }
 
