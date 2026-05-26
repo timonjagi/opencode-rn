@@ -25,15 +25,18 @@ interface Props {
   onReject: () => void
 }
 
-function safeQuestions(questions: unknown[]): Array<{
+function safeQuestions(requestId: string, questions: unknown[]): Array<{
   question: string
   header: string
   options: Array<{ label: string; description: string }>
   multiple: boolean
   custom: boolean
 }> {
-  if (!Array.isArray(questions)) return []
-  return questions
+  if (!Array.isArray(questions)) {
+    console.log(`[QuestionPrompt] ${requestId}: questions is not an array:`, typeof questions, String(questions)?.slice(0, 200))
+    return []
+  }
+  const result = questions
     .filter((q): q is Record<string, unknown> => q != null && typeof q === "object")
     .map((q) => {
       const raw = Array.isArray(q.options) ? q.options : []
@@ -50,10 +53,12 @@ function safeQuestions(questions: unknown[]): Array<{
         custom: q.custom !== false,
       }
     })
+  console.log(`[QuestionPrompt] ${requestId}: processed ${result.length} questions from ${questions.length} raw items`)
+  return result
 }
 
 export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
-  const questions = safeQuestions(request.questions)
+  const questions = safeQuestions(request.id, request.questions)
   const [answers, setAnswers] = useState<string[][]>(() => questions.map(() => []))
   const [custom, setCustom] = useState("")
   const [showCustom, setShowCustom] = useState(false)

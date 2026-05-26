@@ -125,12 +125,14 @@ function normalizeQuestion(q: Record<string, unknown>) {
 export async function refreshPending(client: Client, sessionID: string) {
   try {
     const [perms, questions] = await Promise.all([client.permission.list(), client.question.list()])
+    console.log("[refreshPending] raw API questions:", JSON.stringify(questions)?.slice(0, 500))
     const sessionPerms = (perms || [])
       .filter((p: Record<string, unknown>) => String(p.sessionID) === sessionID)
       .map(normalizePermission)
     const sessionQuestions = (questions || [])
       .filter((q: Record<string, unknown>) => String(q.sessionID) === sessionID)
       .map(normalizeQuestion)
+    console.log("[refreshPending] normalized questions for session", sessionID, ":", JSON.stringify(sessionQuestions)?.slice(0, 500))
 
     useEvents.setState((state) => ({
       permissions: { ...state.permissions, [sessionID]: sessionPerms },
@@ -334,6 +336,7 @@ export const useEvents = create<EventsState>((set, get) => ({
             case "question.asked": {
               const req = props as any
               if (!req.id || !req.sessionID) break
+              console.log("[SSE question.asked]", req.id, "session:", req.sessionID, "questions:", JSON.stringify(req.questions)?.slice(0, 300))
               set((state) => ({
                 questions: {
                   ...state.questions,
