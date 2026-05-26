@@ -125,18 +125,30 @@ function normalizeQuestion(q: Record<string, unknown>) {
 export async function refreshPending(client: Client, sessionID: string) {
   try {
     const [perms, questions] = await Promise.all([client.permission.list(), client.question.list()])
-    console.log("[refreshPending] raw API questions:", JSON.stringify(questions)?.slice(0, 500))
+    const current = useEvents.getState()
+    const existingPerms = current.permissions[sessionID] || []
+    const existingQuestions = current.questions[sessionID] || []
+    const existingPermIds = new Set(existingPerms.map((p) => p.id))
+    const existingQuestionIds = new Set(existingQuestions.map((q) => q.id))
+
     const sessionPerms = (perms || [])
       .filter((p: Record<string, unknown>) => String(p.sessionID) === sessionID)
       .map(normalizePermission)
+      .filter((p) => !existingPermIds.has(p.id))
     const sessionQuestions = (questions || [])
       .filter((q: Record<string, unknown>) => String(q.sessionID) === sessionID)
       .map(normalizeQuestion)
-    console.log("[refreshPending] normalized questions for session", sessionID, ":", JSON.stringify(sessionQuestions)?.slice(0, 500))
+      .filter((q) => !existingQuestionIds.has(q.id))
 
     useEvents.setState((state) => ({
-      permissions: { ...state.permissions, [sessionID]: sessionPerms },
-      questions: { ...state.questions, [sessionID]: sessionQuestions },
+      permissions: {
+        ...state.permissions,
+        [sessionID]: [...(state.permissions[sessionID] || []), ...sessionPerms],
+      },
+      questions: {
+        ...state.questions,
+        [sessionID]: [...(state.questions[sessionID] || []), ...sessionQuestions],
+      },
     }))
   } catch (err) {
     console.warn("[Events] Failed to refresh pending:", err)
@@ -336,7 +348,6 @@ export const useEvents = create<EventsState>((set, get) => ({
             case "question.asked": {
               const req = props as any
               if (!req.id || !req.sessionID) break
-              console.log("[SSE question.asked]", req.id, "session:", req.sessionID, "questions:", JSON.stringify(req.questions)?.slice(0, 300))
               set((state) => ({
                 questions: {
                   ...state.questions,

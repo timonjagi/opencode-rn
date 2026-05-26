@@ -65,7 +65,20 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
   const [current, setCurrent] = useState(0)
 
   const q = questions[current]
-  if (!q || questions.length === 0) return null
+  if (!q) {
+    if (request.questions && Array.isArray(request.questions) && request.questions.length > 0) {
+      return (
+        <View style={[s.card, isDark && s.cardDark]}>
+          <View style={s.header}>
+            <Ionicons name="chatbubble-ellipses-outline" size={18} color="#8b5cf6" />
+            <Text style={[s.title, isDark && s.textWhite]}>Question</Text>
+          </View>
+          <Text style={[s.question, isDark && s.textWhite]}>Loading...</Text>
+        </View>
+      )
+    }
+    return null
+  }
 
   const toggleOption = (label: string) => {
     setAnswers((prev) => {
@@ -75,9 +88,6 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
         copy[current] = selected.includes(label) ? selected.filter((a) => a !== label) : [...selected, label]
       } else {
         copy[current] = [label]
-        if (questions.length === 1) {
-          setTimeout(() => onReply(copy), 100)
-        }
       }
       return copy
     })
@@ -90,9 +100,6 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
     setAnswers(copy)
     setCustom("")
     setShowCustom(false)
-    if (questions.length === 1) {
-      onReply(copy)
-    }
   }
 
   return (
