@@ -86,6 +86,9 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
         copy[current] = selected.includes(label) ? selected.filter((a) => a !== label) : [...selected, label]
       } else {
         copy[current] = [label]
+        if (questions.length === 1) {
+          setTimeout(() => onReply(copy), 100)
+        }
       }
       return copy
     })
@@ -98,6 +101,9 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
     setAnswers(copy)
     setCustom("")
     setShowCustom(false)
+    if (questions.length === 1) {
+      onReply(copy)
+    }
   }
 
   return (
@@ -155,20 +161,18 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
         <TouchableOpacity onPress={onReject}>
           <Text style={[s.dismiss, isDark && s.metaDark]}>Dismiss</Text>
         </TouchableOpacity>
-        {(questions.length > 1 || q.multiple) && (
-          <TouchableOpacity
-            style={[s.submitBtn, isDark && s.submitBtnDark]}
-            onPress={() => {
-              if (current < questions.length - 1) {
-                setCurrent(current + 1)
-              } else {
-                onReply(answers)
-              }
-            }}
-          >
-            <Text style={s.submitText}>{current < questions.length - 1 ? "Next" : "Submit"}</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity
+          style={[s.submitBtn, isDark && s.submitBtnDark]}
+          onPress={() => {
+            if (current < questions.length - 1) {
+              setCurrent(current + 1)
+            } else {
+              onReply(answers)
+            }
+          }}
+        >
+          <Text style={s.submitText}>{current < questions.length - 1 ? "Next" : "Submit"}</Text>
+        </TouchableOpacity>
       </View>
     </View>
   )
