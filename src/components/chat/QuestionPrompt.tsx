@@ -86,9 +86,6 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
         copy[current] = selected.includes(label) ? selected.filter((a) => a !== label) : [...selected, label]
       } else {
         copy[current] = [label]
-        if (questions.length === 1) {
-          setTimeout(() => onReply(copy), 100)
-        }
       }
       return copy
     })
@@ -101,9 +98,6 @@ export function QuestionPrompt({ request, isDark, onReply, onReject }: Props) {
     setAnswers(copy)
     setCustom("")
     setShowCustom(false)
-    if (questions.length === 1) {
-      onReply(copy)
-    }
   }
 
   return (
