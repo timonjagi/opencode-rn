@@ -67,6 +67,7 @@ interface EventsState {
 }
 
 let controller: AbortController | null = null
+let isReconnecting = false
 
 function parseJSON<T>(value: unknown): T[] {
   if (Array.isArray(value)) return value as T[]
@@ -125,31 +126,37 @@ function normalizeQuestion(q: Record<string, unknown>) {
 export async function refreshPending(client: Client, sessionID: string) {
   try {
     const [perms, questions] = await Promise.all([client.permission.list(), client.question.list()])
-    const current = useEvents.getState()
-    const existingPerms = current.permissions[sessionID] || []
-    const existingQuestions = current.questions[sessionID] || []
-    const existingPermIds = new Set(existingPerms.map((p) => p.id))
-    const existingQuestionIds = new Set(existingQuestions.map((q) => q.id))
-
-    const sessionPerms = (perms || [])
-      .filter((p: Record<string, unknown>) => String(p.sessionID) === sessionID)
+    const serverPerms = ((perms || []) as Record<string, unknown>[])
+      .filter((p) => String(p.sessionID) === sessionID)
       .map(normalizePermission)
-      .filter((p) => !existingPermIds.has(p.id))
-    const sessionQuestions = (questions || [])
-      .filter((q: Record<string, unknown>) => String(q.sessionID) === sessionID)
+    const serverQuestions = ((questions || []) as Record<string, unknown>[])
+      .filter((q) => String(q.sessionID) === sessionID)
       .map(normalizeQuestion)
-      .filter((q) => !existingQuestionIds.has(q.id))
 
-    useEvents.setState((state) => ({
-      permissions: {
-        ...state.permissions,
-        [sessionID]: [...(state.permissions[sessionID] || []), ...sessionPerms],
-      },
-      questions: {
-        ...state.questions,
-        [sessionID]: [...(state.questions[sessionID] || []), ...sessionQuestions],
-      },
-    }))
+    const serverPermIds = new Set(serverPerms.map((p) => p.id))
+    const serverQuestionIds = new Set(serverQuestions.map((q) => q.id))
+
+    useEvents.setState((state) => {
+      const localPerms = state.permissions[sessionID] || []
+      const localQuestions = state.questions[sessionID] || []
+      const existingPermIds = new Set(localPerms.map((p) => p.id))
+      const existingQuestionIds = new Set(localQuestions.map((q) => q.id))
+
+      // Add new items from server, keep local items still on server, drop stale
+      const mergedPerms = [
+        ...serverPerms.filter((p) => !existingPermIds.has(p.id)),
+        ...localPerms.filter((p) => serverPermIds.has(p.id)),
+      ]
+      const mergedQuestions = [
+        ...serverQuestions.filter((q) => !existingQuestionIds.has(q.id)),
+        ...localQuestions.filter((q) => serverQuestionIds.has(q.id)),
+      ]
+
+      return {
+        permissions: { ...state.permissions, [sessionID]: mergedPerms },
+        questions: { ...state.questions, [sessionID]: mergedQuestions },
+      }
+    })
   } catch (err) {
     console.warn("[Events] Failed to refresh pending:", err)
   }
@@ -176,6 +183,15 @@ export const useEvents = create<EventsState>((set, get) => ({
     // Run in background
     ;(async () => {
       try {
+        // On reconnect, reconcile pending state with server
+        if (isReconnecting) {
+          isReconnecting = false
+          const currentSession = useSessions.getState().currentSession
+          if (currentSession) {
+            refreshPending(client, currentSession.id)
+          }
+        }
+
         for await (const event of client.global.events(controller?.signal)) {
           if (controller?.signal.aborted) break
 
@@ -383,6 +399,7 @@ export const useEvents = create<EventsState>((set, get) => ({
         if (!controller?.signal.aborted) {
           console.warn("[SSE] Connection lost, reconnecting in 3s:", err)
           set({ connected: false })
+          isReconnecting = true
           setTimeout(() => get().connect(), 3000)
         } else {
           console.log("[SSE] Disconnected (aborted)")
@@ -395,6 +412,6 @@ export const useEvents = create<EventsState>((set, get) => ({
     console.log("[SSE] Disconnecting")
     controller?.abort()
     controller = null
-    set({ connected: false, sessionStatus: {}, statusText: {}, permissions: {}, questions: {} })
+    set({ connected: false, sessionStatus: {}, statusText: {} })
   },
 }))
