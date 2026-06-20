@@ -331,7 +331,7 @@ export const useEvents = create<EventsState>((set, get) => ({
             }
 
             case "permission.asked": {
-              const req = props as any
+              const req = normalizePermission(props as Record<string, unknown>)
               if (!req.id || !req.sessionID) break
               set((state) => ({
                 permissions: {
@@ -362,7 +362,7 @@ export const useEvents = create<EventsState>((set, get) => ({
             }
 
             case "question.asked": {
-              const req = props as any
+              const req = normalizeQuestion(props as Record<string, unknown>)
               if (!req.id || !req.sessionID) break
               set((state) => ({
                 questions: {

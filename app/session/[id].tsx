@@ -13,6 +13,7 @@ import {
   Alert,
 } from "react-native"
 import { useLocalSearchParams, Stack, useRouter } from "expo-router"
+import { useFocusEffect } from "@react-navigation/native"
 import { Ionicons } from "@expo/vector-icons"
 import { useSafeAreaInsets } from "react-native-safe-area-context"
 import * as ImagePicker from "expo-image-picker"
@@ -109,7 +110,10 @@ export default function SessionScreen() {
   const isSending = useSessions((s) => !!(currentSession && s.sending[currentSession.id]))
 
   const { authenticateForMessage } = useAuth()
-  const { client } = useConnections()
+  const { client, clientForDirectory } = useConnections()
+  // Use the same directory-scoped client that selectSession uses so session-scoped
+  // API calls (pending prompts, slash commands, replies) hit the right workspace.
+  const pendingClient = directory ? clientForDirectory(directory) : client
 
   // Catalog
   const catalog = useCatalog()
@@ -179,9 +183,19 @@ export default function SessionScreen() {
     selectSession(id, directory).then(() => {
       // Re-fetch pending permissions/questions from the server to recover from
       // missed SSE events or failed optimistic removals
-      if (client) refreshPending(client, id)
+      if (pendingClient) refreshPending(pendingClient, id)
     })
   }, [id])
+
+  // Re-fetch pending prompts whenever the user returns to this screen so missed
+  // SSE events (e.g. after a disconnect) are recovered even if the component
+  // stayed mounted in the stack.
+  useFocusEffect(
+    useCallback(() => {
+      if (!id || !pendingClient) return
+      refreshPending(pendingClient, id)
+    }, [id, pendingClient]),
+  )
 
   // Sync model chip from latest assistant message
   useEffect(() => {
@@ -329,8 +343,8 @@ export default function SessionScreen() {
       const [cmdName, ...args] = text.split(" ")
       const name = cmdName.slice(1)
       const match = serverCommands.find((c) => c.name === name)
-      if (match && client && currentSession) {
-        client.session
+      if (match && pendingClient && currentSession) {
+        pendingClient.session
           .command(currentSession.id, {
             command: name,
             arguments: args.join(" "),
@@ -368,7 +382,7 @@ export default function SessionScreen() {
   }, [loadingMore])
 
   const handlePermissionReply = async (requestID: string, reply: "once" | "always" | "reject") => {
-    if (!client || !sessionID) return
+    if (!pendingClient || !sessionID) return
     // Snapshot for rollback
     const snapshot = useEvents.getState().permissions[sessionID] || []
     // Optimistically remove from UI
@@ -379,7 +393,7 @@ export default function SessionScreen() {
       },
     }))
     try {
-      await client.permission.reply(requestID, reply)
+      await pendingClient.permission.reply(requestID, reply)
     } catch (err) {
       console.error("Permission reply failed:", err)
       // Restore the prompt so the user can retry
@@ -391,7 +405,7 @@ export default function SessionScreen() {
   }
 
   const handleQuestionReply = async (requestID: string, answers: string[][]) => {
-    if (!client || !sessionID) return
+    if (!pendingClient || !sessionID) return
     const snapshot = useEvents.getState().questions[sessionID] || []
     useEvents.setState((state) => ({
       questions: {
@@ -400,7 +414,7 @@ export default function SessionScreen() {
       },
     }))
     try {
-      await client.question.reply(requestID, answers)
+      await pendingClient.question.reply(requestID, answers)
     } catch (err) {
       console.error("Question reply failed:", err)
       useEvents.setState((state) => ({
@@ -411,7 +425,7 @@ export default function SessionScreen() {
   }
 
   const handleQuestionReject = async (requestID: string) => {
-    if (!client || !sessionID) return
+    if (!pendingClient || !sessionID) return
     const snapshot = useEvents.getState().questions[sessionID] || []
     useEvents.setState((state) => ({
       questions: {
@@ -420,7 +434,7 @@ export default function SessionScreen() {
       },
     }))
     try {
-      await client.question.reject(requestID)
+      await pendingClient.question.reject(requestID)
     } catch (err) {
       console.error("Question reject failed:", err)
       useEvents.setState((state) => ({
