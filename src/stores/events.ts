@@ -296,8 +296,7 @@ export const useEvents = create<EventsState>((set, get) => ({
             case "session.created": {
               const info = props.info as Session | undefined
               if (!info) break
-              if (info.parentID) break
-              // Add to sessions list
+              // Add to sessions list (including subagent/child threads)
               useSessions.setState((state) => {
                 const exists = state.sessions.some((s) => s.id === info.id)
                 if (exists) return {}

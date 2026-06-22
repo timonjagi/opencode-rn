@@ -12,9 +12,13 @@ interface Props {
   isDark: boolean
   hasMore: boolean
   loadingAll: boolean
+  childSessions?: Session[]
+  parent?: Session | null
   onLoadAll: () => void
   onScrollToTop: () => void
   onClose: () => void
+  onLoadChildren?: () => void
+  onNavigateToSession?: (sessionID: string) => void
 }
 
 function compact(n: number): string {
@@ -47,9 +51,13 @@ export function SessionInfo({
   isDark,
   hasMore,
   loadingAll,
+  childSessions,
+  parent,
   onLoadAll,
   onScrollToTop,
   onClose,
+  onLoadChildren,
+  onNavigateToSession,
 }: Props) {
   // Match TUI: last assistant message tokens (context window), cumulative cost
   const stats = useMemo(() => {
@@ -158,6 +166,15 @@ export function SessionInfo({
           />
         )}
         {session?.share?.url && <MetaItem icon="share-outline" label="Shared" value="Yes" isDark={isDark} />}
+        {parent && (
+          <MetaItem
+            icon="arrow-up-outline"
+            label="Parent"
+            value={parent.title || "Untitled Session"}
+            isDark={isDark}
+            onPress={() => onNavigateToSession?.(parent.id)}
+          />
+        )}
       </View>
 
       {/* Navigation actions */}
@@ -179,18 +196,69 @@ export function SessionInfo({
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Child sessions */}
+      {session && !session.parentID && (
+        <View style={s.childrenSection}>
+          <Text style={[s.sectionTitle, isDark && s.dimDark]}>Subagents</Text>
+          {childSessions && childSessions.length > 0 ? (
+            <View style={s.childList}>
+              {childSessions.map((child) => (
+                <TouchableOpacity
+                  key={child.id}
+                  style={[s.childRow, isDark && s.childRowDark]}
+                  onPress={() => onNavigateToSession?.(child.id)}
+                >
+                  <Ionicons name="git-branch-outline" size={14} color="#8b5cf6" />
+                  <Text style={[s.childTitle, isDark && s.textDark]} numberOfLines={1}>
+                    {child.title || "Untitled Session"}
+                  </Text>
+                  <Ionicons name="chevron-forward" size={14} color={isDark ? "#666666" : "#999999"} />
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <TouchableOpacity style={[s.action, isDark && s.actionDark]} onPress={onLoadChildren}>
+              <Ionicons name="download-outline" size={14} color={isDark ? "#888888" : "#666666"} />
+              <Text style={[s.actionText, isDark && s.dimDark]}>Load subagents</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
     </View>
   )
 }
 
-function MetaItem({ icon, label, value, isDark }: { icon: string; label: string; value: string; isDark: boolean }) {
-  return (
-    <View style={s.metaItem}>
+function MetaItem({
+  icon,
+  label,
+  value,
+  isDark,
+  onPress,
+}: {
+  icon: string
+  label: string
+  value: string
+  isDark: boolean
+  onPress?: () => void
+}) {
+  const content = (
+    <>
       <Ionicons name={icon as any} size={12} color={isDark ? "#555555" : "#999999"} />
       <Text style={[s.metaLabel, isDark && s.dimDark]}>{label}</Text>
-      <Text style={[s.metaValue, isDark && s.metaValueDark]}>{value}</Text>
-    </View>
+      <Text style={[s.metaValue, onPress && s.metaValueLink, isDark && s.metaValueDark]}>{value}</Text>
+    </>
   )
+
+  if (onPress) {
+    return (
+      <TouchableOpacity style={s.metaItem} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    )
+  }
+
+  return <View style={s.metaItem}>{content}</View>
 }
 
 function TokenPill({ label, value, color, isDark }: { label: string; value: number; color: string; isDark: boolean }) {
@@ -308,6 +376,43 @@ const s = StyleSheet.create({
   },
   metaValueDark: {
     color: "#aaaaaa",
+  },
+  metaValueLink: {
+    color: "#8b5cf6",
+  },
+  childrenSection: {
+    gap: 8,
+  },
+  sectionTitle: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#999999",
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  childList: {
+    gap: 6,
+  },
+  childRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#ffffff",
+    borderWidth: 1,
+    borderColor: "#e5e5e5",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  childRowDark: {
+    backgroundColor: "#1a1a1a",
+    borderColor: "#2a2a2a",
+  },
+  childTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "500",
+    color: "#0a0a0a",
   },
   actions: {
     flexDirection: "row",

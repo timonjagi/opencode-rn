@@ -285,6 +285,8 @@ export function createClient(config: ClientConfig) {
         return request<MessageWithParts[]>(config, `/session/${sessionID}/message${qs ? `?${qs}` : ""}`)
       },
 
+      children: (sessionID: string) => request<Session[]>(config, `/session/${sessionID}/children`),
+
       // Sends a message and returns the response
       // Fire-and-forget async prompt - SSE events drive all real-time updates
       prompt: async (

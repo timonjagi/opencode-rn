@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from "react"
+import { useEffect, useCallback, useState, useRef, useMemo } from "react"
 import {
   View,
   Text,
@@ -13,6 +13,8 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  type StyleProp,
+  type ViewStyle,
 } from "react-native"
 import { router } from "expo-router"
 import { Ionicons } from "@expo/vector-icons"
@@ -35,35 +37,26 @@ function formatTime(timestamp: number): string {
   return date.toLocaleDateString()
 }
 
-function SessionItem({
+function SessionItemContent({
   session,
   isDark,
-  onRename,
-  onDelete,
+  badges,
+  style,
+  onPress,
+  onLongPress,
+  right,
 }: {
   session: Session
   isDark: boolean
-  onRename: () => void
-  onDelete: () => void
+  badges?: React.ReactNode
+  style?: StyleProp<ViewStyle>
+  onPress: () => void
+  onLongPress: () => void
+  right?: React.ReactNode
 }) {
-  const onPress = () => {
-    router.push(`/session/${session.id}`)
-  }
-
-  const onLongPress = () => {
-    Alert.alert(session.title || "Untitled Session", undefined, [
-      { text: "Cancel", style: "cancel" },
-      { text: "Rename", onPress: onRename },
-      { text: "Delete", style: "destructive", onPress: onDelete },
-    ])
-  }
-
-  // Extract short directory name from session
-  const shortDir = session.directory ? session.directory.split("/").filter(Boolean).pop() : null
-
   return (
     <TouchableOpacity
-      style={[styles.sessionItem, isDark && styles.sessionItemDark]}
+      style={[styles.sessionItem, isDark && styles.sessionItemDark, style]}
       onPress={onPress}
       onLongPress={onLongPress}
     >
@@ -78,16 +71,118 @@ function SessionItem({
             {formatTime(session.time.updated)}
             {session.summary && ` · ${session.summary.files} files`}
           </Text>
+          {badges}
+        </View>
+      </View>
+      {right}
+    </TouchableOpacity>
+  )
+}
+
+function ParentSessionItem({
+  session,
+  isDark,
+  expanded,
+  childCount,
+  onToggle,
+  onRename,
+  onDelete,
+}: {
+  session: Session
+  isDark: boolean
+  expanded: boolean
+  childCount: number
+  onToggle: () => void
+  onRename: () => void
+  onDelete: () => void
+}) {
+  const shortDir = session.directory ? session.directory.split("/").filter(Boolean).pop() : null
+
+  return (
+    <SessionItemContent
+      session={session}
+      isDark={isDark}
+      onPress={() => router.push(`/session/${session.id}`)}
+      onLongPress={() =>
+        Alert.alert(session.title || "Untitled Session", undefined, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Rename", onPress: onRename },
+          { text: "Delete", style: "destructive", onPress: onDelete },
+        ])
+      }
+      badges={
+        <View style={styles.badgeRow}>
           {shortDir && (
             <View style={styles.sessionDirBadge}>
               <Ionicons name="folder-outline" size={12} color={isDark ? "#888888" : "#666666"} />
               <Text style={[styles.sessionDirText, isDark && styles.metaDark]}>{shortDir}</Text>
             </View>
           )}
+          {childCount > 0 && (
+            <View style={[styles.subagentBadge, isDark && styles.subagentBadgeDark]}>
+              <Ionicons name="git-branch-outline" size={10} color="#8b5cf6" />
+              <Text style={styles.subagentBadgeText}>{childCount} subagent{childCount === 1 ? "" : "s"}</Text>
+            </View>
+          )}
         </View>
-      </View>
-      <Ionicons name="chevron-forward" size={20} color={isDark ? "#666666" : "#999999"} />
-    </TouchableOpacity>
+      }
+      right={
+        <TouchableOpacity onPress={onToggle} hitSlop={8} style={styles.toggleBtn}>
+          <Ionicons
+            name={expanded ? "chevron-up" : "chevron-down"}
+            size={20}
+            color={isDark ? "#888888" : "#666666"}
+          />
+        </TouchableOpacity>
+      }
+    />
+  )
+}
+
+function ChildSessionItem({
+  session,
+  parent,
+  isDark,
+  onRename,
+  onDelete,
+}: {
+  session: Session
+  parent: Session
+  isDark: boolean
+  onRename: () => void
+  onDelete: () => void
+}) {
+  const agentName = useMemo(() => {
+    const match = session.title.match(/@(\w+)\s+subagent/i)
+    return match ? match[1] : null
+  }, [session.title])
+
+  return (
+    <SessionItemContent
+      session={session}
+      isDark={isDark}
+      style={[styles.childSessionItem, isDark && styles.childSessionItemDark]}
+      onPress={() => router.push(`/session/${session.id}`)}
+      onLongPress={() =>
+        Alert.alert(session.title || "Untitled Session", undefined, [
+          { text: "Cancel", style: "cancel" },
+          { text: "Rename", onPress: onRename },
+          { text: "Delete", style: "destructive", onPress: onDelete },
+        ])
+      }
+      badges={
+        <View style={styles.badgeRow}>
+          <View style={[styles.subagentBadge, isDark && styles.subagentBadgeDark]}>
+            <Ionicons name="git-branch-outline" size={10} color="#8b5cf6" />
+            <Text style={styles.subagentBadgeText}>{agentName ? `${agentName} subagent` : "subagent"}</Text>
+          </View>
+          <Text style={[styles.parentRef, isDark && styles.metaDark]} numberOfLines={1}>
+            from {parent.title || "Untitled Session"}
+          </Text>
+        </View>
+      }
+      right={<Ionicons name="chevron-forward" size={20} color={isDark ? "#666666" : "#999999"} />}
+    />
   )
 }
 
@@ -111,7 +206,7 @@ export default function SessionsScreen() {
   const [renaming, setRenaming] = useState<Session | null>(null)
   const [renameText, setRenameText] = useState("")
 
-  const { sessions, isLoading, error, loadSessions, createSession, deleteSession } = useSessions()
+  const { sessions, isLoading, error, loadSessions, loadChildSessions, createSession, deleteSession } = useSessions()
   const {
     activeConnection,
     client,
@@ -125,6 +220,61 @@ export default function SessionsScreen() {
   } = useConnections()
   const dirSheetRef = useRef<BottomSheet>(null)
   const [refreshing, setRefreshing] = useState(false)
+  const [expandedParents, setExpandedParents] = useState<Set<string>>(new Set())
+
+  const { roots, childrenByParent } = useMemo(() => {
+    const roots: Session[] = []
+    const childrenByParent = new Map<string, Session[]>()
+    for (const session of sessions) {
+      if (session.parentID) {
+        const list = childrenByParent.get(session.parentID) || []
+        list.push(session)
+        childrenByParent.set(session.parentID, list)
+      } else {
+        roots.push(session)
+      }
+    }
+    for (const list of childrenByParent.values()) {
+      list.sort((a, b) => a.time.created - b.time.created)
+    }
+    return { roots, childrenByParent }
+  }, [sessions])
+
+  const displayData = useMemo(() => {
+    const items: Array<
+      | { type: "parent"; session: Session }
+      | { type: "child"; session: Session; parent: Session }
+    > = []
+    for (const session of roots) {
+      items.push({ type: "parent", session })
+      if (expandedParents.has(session.id)) {
+        const children = childrenByParent.get(session.id) || []
+        for (const child of children) {
+          items.push({ type: "child", session: child, parent: session })
+        }
+      }
+    }
+    return items
+  }, [roots, childrenByParent, expandedParents])
+
+  const toggleParent = useCallback(
+    (parentID: string) => {
+      setExpandedParents((prev) => {
+        const next = new Set(prev)
+        if (next.has(parentID)) {
+          next.delete(parentID)
+        } else {
+          next.add(parentID)
+          const hasChildren = sessions.some((s) => s.parentID === parentID)
+          if (!hasChildren) {
+            loadChildSessions(parentID)
+          }
+        }
+        return next
+      })
+    },
+    [sessions, loadChildSessions],
+  )
 
   const handleSwitchDirectory = useCallback(
     async (dir?: string) => {
@@ -286,16 +436,33 @@ export default function SessionsScreen() {
       )}
 
       <FlatList
-        data={sessions}
-        keyExtractor={(item) => item.id}
-        renderItem={({ item }) => (
-          <SessionItem
-            session={item}
-            isDark={isDark}
-            onRename={() => handleRename(item)}
-            onDelete={() => handleDelete(item)}
-          />
-        )}
+        data={displayData}
+        keyExtractor={(item) => `${item.type}-${item.session.id}`}
+        renderItem={({ item }) => {
+          if (item.type === "parent") {
+            const childCount = childrenByParent.get(item.session.id)?.length ?? 0
+            return (
+              <ParentSessionItem
+                session={item.session}
+                isDark={isDark}
+                expanded={expandedParents.has(item.session.id)}
+                childCount={childCount}
+                onToggle={() => toggleParent(item.session.id)}
+                onRename={() => handleRename(item.session)}
+                onDelete={() => handleDelete(item.session)}
+              />
+            )
+          }
+          return (
+            <ChildSessionItem
+              session={item.session}
+              parent={item.parent}
+              isDark={isDark}
+              onRename={() => handleRename(item.session)}
+              onDelete={() => handleDelete(item.session)}
+            />
+          )
+        }}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={isDark ? "#ffffff" : "#0a0a0a"} />
         }
@@ -310,7 +477,7 @@ export default function SessionsScreen() {
             </View>
           )
         }
-        contentContainerStyle={sessions.length === 0 ? styles.emptyContent : undefined}
+        contentContainerStyle={displayData.length === 0 ? styles.emptyContent : undefined}
       />
 
       {/* FAB to create new session */}
@@ -545,6 +712,13 @@ const styles = StyleSheet.create({
   sessionItemDark: {
     borderBottomColor: "#1a1a1a",
   },
+  childSessionItem: {
+    paddingLeft: 32,
+    backgroundColor: "#fafafa",
+  },
+  childSessionItemDark: {
+    backgroundColor: "#111111",
+  },
   sessionContent: {
     flex: 1,
   },
@@ -584,6 +758,38 @@ const styles = StyleSheet.create({
   sessionDirText: {
     fontSize: 11,
     color: "#666666",
+  },
+  badgeRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flexShrink: 1,
+    marginLeft: 8,
+  },
+  subagentBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    backgroundColor: "#f5f3ff",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+  },
+  subagentBadgeDark: {
+    backgroundColor: "#1a1a2e",
+  },
+  subagentBadgeText: {
+    fontSize: 10,
+    color: "#8b5cf6",
+    fontWeight: "600",
+  },
+  parentRef: {
+    fontSize: 11,
+    color: "#999999",
+    flexShrink: 1,
+  },
+  toggleBtn: {
+    padding: 4,
   },
   metaDark: {
     color: "#888888",

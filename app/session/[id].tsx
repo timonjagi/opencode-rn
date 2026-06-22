@@ -93,12 +93,14 @@ export default function SessionScreen() {
 
   const {
     currentSession,
+    sessions,
     messages,
     parts,
     isLoading,
     loadingMore,
     hasMore,
     selectSession,
+    loadChildSessions,
     sendMessage,
     abortSession,
     loadOlderMessages,
@@ -129,6 +131,16 @@ export default function SessionScreen() {
   const sessionID = currentSession?.id
   const permissions = useEvents((s) => (sessionID ? s.permissions[sessionID] : undefined)) || []
   const questions = useEvents((s) => (sessionID ? s.questions[sessionID] : undefined)) || []
+
+  // Subagent thread relationships
+  const childSessions = useMemo(
+    () => (currentSession ? sessions.filter((s) => s.parentID === currentSession.id).sort((a, b) => a.time.created - b.time.created) : []),
+    [currentSession, sessions],
+  )
+  const parentSession = useMemo(
+    () => (currentSession?.parentID ? sessions.find((s) => s.id === currentSession.parentID) || null : null),
+    [currentSession, sessions],
+  )
 
   const shortDir = getShortDir(currentSession?.directory)
   const [showScrollButton, setShowScrollButton] = useState(false)
@@ -523,6 +535,8 @@ export default function SessionScreen() {
           isDark={isDark}
           hasMore={hasMore}
           loadingAll={loadingMore}
+          childSessions={childSessions}
+          parent={parentSession}
           onLoadAll={() => {
             if (hasMore && !loadingMore) loadOlderMessages()
           }}
@@ -530,6 +544,10 @@ export default function SessionScreen() {
             flatListRef.current?.scrollToEnd({ animated: true })
           }}
           onClose={() => setShowInfo(false)}
+          onLoadChildren={() => {
+            if (currentSession) loadChildSessions(currentSession.id)
+          }}
+          onNavigateToSession={(id) => router.push(`/session/${id}`)}
         />
 
         {/* Revert banner */}

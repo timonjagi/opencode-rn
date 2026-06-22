@@ -34,6 +34,7 @@ interface SessionsState {
 
   // Actions
   loadSessions: () => Promise<void>
+  loadChildSessions: (parentID: string) => Promise<void>
   selectSession: (sessionID: string, directory?: string) => Promise<void>
   loadOlderMessages: () => Promise<void>
   createSession: (title?: string) => Promise<Session | null>
@@ -86,6 +87,27 @@ export const useSessions = create<SessionsState>((set, get) => ({
       set({ sessions, isLoading: false })
     } catch (error) {
       set({ error: "Failed to load sessions", isLoading: false })
+    }
+  },
+
+  loadChildSessions: async (parentID) => {
+    const client = clientFor(get().sessions.find((s) => s.id === parentID)?.directory)
+    if (!client) {
+      set({ error: "No active connection" })
+      return
+    }
+
+    try {
+      const children = await client.session.children(parentID)
+      set((state) => {
+        const existing = new Set(state.sessions.map((s) => s.id))
+        const newSessions = children.filter((s) => !existing.has(s.id))
+        if (newSessions.length === 0) return {}
+        return { sessions: [...newSessions, ...state.sessions] }
+      })
+    } catch (error) {
+      console.error("Failed to load child sessions:", error)
+      set({ error: "Failed to load child sessions" })
     }
   },
 
